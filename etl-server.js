@@ -14,6 +14,7 @@ var Inert = require('inert');
 var Vision = require('vision');
 var HapiSwagger = require('hapi-swagger');
 var Pack = require('./package');
+
 var server = new Hapi.Server({
   connections: {
     //routes: {cors:{origin:["https://amrs.ampath.or.ke:8443"]}}
