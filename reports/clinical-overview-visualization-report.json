@@ -1,0 +1,65 @@
+[
+    {
+     "name": "clinical-hiv-overview-report",
+     "table":{"schema":"etl","tableName":"dates","alias":"t1"},
+     "joins":[
+         {"joinType":"JOIN","schema":"etl","tableName":"flat_hiv_summary","alias":"t2","joinExpression":"is_clinical_encounter=1 and timestampdiff(day,t2.rtc_date,t1.endDate) <= 90 and encounter_datetime <= t1.endDate and coalesce(death_date, out_of_care) is null"}
+     ],
+     "parameters": [
+         {"name":"startDate", "defaultValue":["01-01-1980"]},
+         {"name":"endDate", "defaultValue":["Now()"]},
+         {"name":"locations","defaultValue":[1]},
+         {"name":"groupByEndDate", "defaultValue":[
+             {"label":"endDate","expression":"endDate"}
+         ]
+         }
+     ],
+     "filters": [
+         {"expression":"t1.endDate >= ?", "parameter":"startDate"},
+         {"expression":"t1.endDate <= ?", "parameter":"endDate"},
+         {"expression":"t2.location_id in ?", "parameter":"locations"}
+     ],
+     "groupClause":[
+         {"parameter":"groupByEndDate"}
+     ],
+     "indicators": [
+         {
+             "label":"current_in_care",
+             "expression":"current_in_care",
+             "sql":"count(distinct person_id)"
+         },
+         {
+             "label":"current_on_art",
+             "expression":"current_on_art",
+             "sql":"count(distinct if(arv_start_date is not null, person_id,null))"
+         },
+         {
+             "label":"vl_less_than_1000",
+             "expression":"vl_less_than_1000",
+             "sql":"count(distinct if(distinct if(vl_resulted<1000 or vl_1<1000 or vl_2<1000, person_id,null))"
+         }
+     ],
+     "supplementColumns":[
+            {
+                "label":"reporting_date",
+                "type":"single",
+                "sql":"t1.endDate"
+            },
+            {
+                "label":"location_uuid",
+                "type":"single",
+                "sql":"t2.location_uuid"
+            },
+            {
+                "label":"location_id",
+                "type":"single",
+                "sql":"t2.location_id"
+            },
+            {
+                "label":"reporting_month",
+                "type":"single",
+                "sql":"date_format(t1.endDate, '%Y-%m')"
+            }
+        ]
+ }
+]
