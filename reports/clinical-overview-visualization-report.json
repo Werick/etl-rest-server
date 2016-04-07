@@ -37,6 +37,16 @@
              "label":"vl_less_than_1000",
              "expression":"vl_less_than_1000",
              "sql":"count(distinct if(distinct if(vl_resulted<1000 or vl_1<1000 or vl_2<1000, person_id,null))"
+         },
+         {
+             "label":"pending_vl_order",
+             "expression":"pending_vl_order",
+             "sql":"count(distinct if(vl_resulted is null and vl_order_date is not null, person_id,null))"
+         },
+         {
+             "label":"pending_cd4_order",
+             "expression":"pending_cd4_order",
+             "sql":"count(distinct if(cd4_resulted is null and cd4_order_date is not null, person_id,null))"
          }
      ],
      "supplementColumns":[
@@ -61,5 +71,144 @@
                 "sql":"date_format(t1.endDate, '%Y-%m')"
             }
         ]
- }
+ },
+ {
+  "name": "defaulters-overview-report",
+  "table":{"schema":"etl","tableName":"dates","alias":"t1"},
+  "joins":[
+      {"joinType":"JOIN","schema":"etl","tableName":"flat_defaulters","alias":"t2","joinExpression":"rtc_date <= t1.endDate"}
+  ],
+  "parameters": [
+      {"name":"startDate", "defaultValue":["01-01-1980"]},
+      {"name":"endDate", "defaultValue":["Now()"]},
+      {"name":"locations","defaultValue":[1]},
+      {"name":"days_since_rtc", "defaultValue":[30]},
+      {"name":"groupByEndDate", "defaultValue":[
+          {"label":"endDate","expression":"endDate"}
+      ]
+      }
+  ],
+  "filters": [
+      {"expression":"t1.endDate >= ?", "parameter":"startDate"},
+      {"expression":"t1.endDate <= ?", "parameter":"endDate"},
+      {"expression":"t2.location_id in ?", "parameter":"locations"},
+      {"expression":"t2.days_since_rtc <= ?", "parameter":"days_since_rtc"}
+  ],
+  "groupClause":[
+      {"parameter":"groupByEndDate"}
+  ],
+  "indicators": [
+      {
+          "label":"total_defaulters",
+          "expression":"total_defaulters",
+          "sql":"count(distinct person_id)"
+      },
+      {
+          "label":"pmtct_defaulters",
+          "expression":"pmtct_defaulters",
+          "sql":"count(distinct if(encounter_type_name in ('PMTCTPOSTNATAL','ANCINITIAL', 'PMTCTANC'), person_id,null))"
+      },
+      {
+          "label":"adult_defaulters",
+          "expression":"adult_defaulters",
+          "sql":"count(distinct if(encounter_type_name in ('ADULTRETURN', 'ADULTINITIAL'), person_id,null))"
+      },
+      {
+          "label":"peds_defaulters",
+          "expression":"peds_defaulters",
+          "sql":"count(distinct if(encounter_type_name in ('PEDSRETURN', 'PEDSINITIAL'), person_id,null))"
+      },
+      {
+          "label":"unclassified_defaulters",
+          "expression":"unclassified_defaulters",
+          "sql":"count(distinct if(encounter_type_name in ('TRIAGE', 'OUTREACHFIELDFU','POC Lab'), person_id,null))"
+      }
+
+  ],
+  "supplementColumns":[
+         {
+             "label":"reporting_date",
+             "type":"single",
+             "sql":"t1.endDate"
+         },
+         {
+             "label":"location_uuid",
+             "type":"single",
+             "sql":"t2.location_uuid"
+         },
+         {
+             "label":"location_id",
+             "type":"single",
+             "sql":"t2.location_id"
+         },
+         {
+             "label":"reporting_month",
+             "type":"single",
+             "sql":"date_format(t1.endDate, '%Y-%m')"
+         }
+     ]
+},
+{
+ "name": "art-overview-report",
+ "table":{"schema":"etl","tableName":"dates","alias":"t1"},
+ "joins":[
+     {"joinType":"JOIN","schema":"etl","tableName":"flat_hiv_summary","alias":"t2","joinExpression":"is_clinical_encounter=1 and timestampdiff(day,t2.rtc_date,t1.endDate) <= 90 and encounter_datetime <= t1.endDate and coalesce(death_date, out_of_care) is null"}
+ ],
+ "parameters": [
+     {"name":"startDate", "defaultValue":["01-01-1980"]},
+     {"name":"endDate", "defaultValue":["Now()"]},
+     {"name":"locations","defaultValue":[1]},
+     {"name":"groupByEndDate", "defaultValue":[
+         {"label":"endDate","expression":"endDate"}
+     ]
+     }
+ ],
+ "filters": [
+     {"expression":"t1.endDate >= ?", "parameter":"startDate"},
+     {"expression":"t1.endDate <= ?", "parameter":"endDate"},
+     {"expression":"t2.location_id in ?", "parameter":"locations"}
+ ],
+ "groupClause":[
+     {"parameter":"groupByEndDate"}
+ ],
+ "indicators": [
+     {
+         "label":"no_regimen",
+         "expression":"no_regimen",
+         "sql":"count(distinct if(coalesce(cur_arv_line,cur_arv_meds) is null, person_id,null))"
+     },
+     {
+         "label":"first_line_regimen",
+         "expression":"first_line_regimen",
+         "sql":"count(distinct if(cur_arv_line=1, person_id,null))"
+     },
+     {
+         "label":"second_line_regimen",
+         "expression":"second_line_regimen",
+         "sql":"count(distinct if(cur_arv_line=2, person_id,null))"
+     }
+ ],
+ "supplementColumns":[
+        {
+            "label":"reporting_date",
+            "type":"single",
+            "sql":"t1.endDate"
+        },
+        {
+            "label":"location_uuid",
+            "type":"single",
+            "sql":"t2.location_uuid"
+        },
+        {
+            "label":"location_id",
+            "type":"single",
+            "sql":"t2.location_id"
+        },
+        {
+            "label":"reporting_month",
+            "type":"single",
+            "sql":"date_format(t1.endDate, '%Y-%m')"
+        }
+    ]
+}
 ]
